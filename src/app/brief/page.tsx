@@ -1,0 +1,11 @@
+import Link from "next/link";
+
+export default function Page() {
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-16 sm:px-8">
+      <Link href="/" className="text-sm text-muted hover:text-violet">← Briefly</Link>
+      <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl font-extrabold">Create a Brand Brief</h1>
+      <p className="mt-2 text-muted">Screen 2 — AI Brief Builder. Wires to POST /api/brief.</p>
+    </main>
+  );
+}
