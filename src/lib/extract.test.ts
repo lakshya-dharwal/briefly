@@ -63,3 +63,36 @@ describe("guards", () => {
     expect(cleanMarkdown(`hi ${"A".repeat(500)} there`)).toBe("hi there");
   });
 });
+
+describe("directory pages", () => {
+  const FEED = `### 59. Kelsey Kotzur
+
+Bio NYC Travel + Fashion + Life \\ \\ \\ TikTok Account @kelseykotzur \\+ Follow TikTok Followers 242.2K Type Macro Get Email Contact 60. Bridget Brown Bio collecting vintage
+
+### 60. Bridget Brown
+
+Bio collecting vintage TikTok Account @bridgetbrown`;
+  const found = extractHeuristic({ url: "https://creators.feedspot.com/x", markdown: FEED });
+
+  it("never lets one creator's evidence run into the next", () => {
+    const kelsey = found.find((f) => f.name === "Kelsey Kotzur")!;
+    expect(kelsey.evidence[0]).not.toMatch(/Bridget|vintage/);
+  });
+
+  it("strips directory boilerplate and reads the platform label", () => {
+    const kelsey = found.find((f) => f.name === "Kelsey Kotzur")!;
+    expect(kelsey.evidence[0]).not.toMatch(/\+ ?Follow\b|Get Email|Type Macro|\\/);
+    expect(kelsey.platform).toBe("tiktok");
+    expect(kelsey.handle).toBe("@kelseykotzur");
+  });
+});
+
+describe("names", () => {
+  it("prefers the readable name in 'handle (Name - tagline)' headings", () => {
+    const [c] = extractHeuristic({
+      url: "https://x.io",
+      markdown: "### 1. dixiedamelio (Dixie D'Amelio - Fashion Focus)\n\nOutfit styling and fashion hauls for everyday wardrobes.",
+    });
+    expect(c.name).toBe("Dixie D'Amelio");
+  });
+});

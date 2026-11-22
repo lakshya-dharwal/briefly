@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildBrief, hasAnthropicKey } from "@/lib/brief";
 import { readiness } from "@/lib/readiness";
-import { SAMPLE_BRIEF } from "@/data/sample-brief";
+import { buildBriefFromRules } from "@/lib/brief-rules";
 
 const Body = z.object({
   description: z.string().min(10).max(4000),
@@ -17,8 +17,9 @@ export async function POST(req: Request) {
   }
 
   if (!hasAnthropicKey()) {
-    // No key: return the sample brief, clearly marked, so the demo still runs.
-    return NextResponse.json({ brief: SAMPLE_BRIEF, readiness: readiness(SAMPLE_BRIEF), mode: "sample" });
+    // No key: parse the brand's own words with rules. Unstated fields stay empty.
+    const brief = buildBriefFromRules(parsed.data);
+    return NextResponse.json({ brief, readiness: readiness(brief), mode: "rules" });
   }
 
   try {

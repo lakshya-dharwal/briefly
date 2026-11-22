@@ -84,8 +84,40 @@ function firstHandle(s: string) {
 }
 
 function platformMentioned(s: string) {
-  const m = s.match(/\b(tiktok|instagram|youtube)\b/i);
+  const m =
+    s.match(/\b(tiktok|instagram|youtube)\s+account\b/i) ??
+    s.match(/(tiktok|instagram|youtube)\.com\//i) ??
+    s.match(/\b(tiktok|instagram|youtube)\b/i);
   return m ? m[1].toLowerCase() : undefined;
+}
+
+/** The listing site's own social account, e.g. @influencerintelligence on influencerintelligence.com. */
+function isSiteAccount(key: string, siteRoot: string) {
+  return siteRoot.length >= 4 && (key === siteRoot || key.startsWith(siteRoot));
+}
+
+/** "dixiedamelio (Dixie D'Amelio - Fashion Focus)" -> "Dixie D'Amelio". */
+function cleanName(raw: string) {
+  const m = raw.match(/^\S+\s*\(([^()]+?)(?:\s+[-–—|]\s+[^()]*)?\)$/);
+  return (m ? m[1] : raw.replace(/\s+[-–—|]\s+.*$/, "")).trim();
+}
+
+/** Where the next roundup entry starts: a link, a heading, or "60. Name". */
+const NEXT_HEAD = /#{1,4}\s|\n\s*\d{1,3}\s*\n|\s\d{1,3}\.\s+(?=[A-Z@])/;
+const NEXT_ENTRY = new RegExp(`\\[|${NEXT_HEAD.source}`);
+
+/** Remove directory-site boilerplate and contact details from a snippet. */
+function tidy(s: string) {
+  return noEmails(
+    s
+      .replace(/\\+/g, " ")
+      .replace(/\+\s*Follow\b/gi, "")
+      .replace(/Get Email Contact/gi, "")
+      .replace(/\bType\s+(?:Mega|Macro|Micro|Nano|Mid)\b/gi, "")
+      .replace(/\bGender\s+(?:Male|Female)\b/gi, "")
+      .replace(/\b(?:TikTok|Instagram|YouTube)\s+Account\s+@[\w.]+/gi, "")
+      .replace(/^\s*Bio\s+/i, ""),
+  );
 }
 
 /** Split markdown into "N. Name" heading entries with the text under each. */
@@ -118,17 +150,17 @@ export function extractHeuristic(page: SourcePage): ExtractedCreator[] {
   const seen = new Set<string>();
   const push = (c: ExtractedCreator) => {
     const k = (c.handle ?? c.name).toLowerCase().replace(/^@/, "");
-    if (!k || seen.has(k) || (siteRoot && k.includes(siteRoot))) return;
+    if (!k || seen.has(k) || isSiteAccount(k, siteRoot)) return;
     seen.add(k);
     out.push(c);
   };
 
   // 1. Numbered roundup entries: "### 9. @handle" / "### 17. Lisa Baisl" + the paragraph under it.
   for (const block of numberedBlocks(md)) {
-    const name = stripMd(block.heading);
+    const name = cleanName(stripMd(block.heading));
     if (name.length < 2 || name.length > 60) continue;
     const handle = name.startsWith("@") ? name.split(/\s/)[0] : firstHandle(block.body);
-    const evidence = clip(noEmails(stripMd(block.body)));
+    const evidence = clip(tidy(stripMd(block.body.split(NEXT_HEAD)[0])));
     push({
       name,
       handle,
@@ -148,7 +180,7 @@ export function extractHeuristic(page: SourcePage): ExtractedCreator[] {
     const h = rawHandle.replace("@", "");
     if (NOT_HANDLES.has(h.toLowerCase())) continue;
     const after = md.slice((m.index ?? 0) + whole.length, (m.index ?? 0) + whole.length + 800);
-    const rest = clip(noEmails(stripMd(after.split(/\[|\n\s*\d{1,3}\s*\n/)[0])));
+    const rest = clip(tidy(stripMd(after.split(NEXT_ENTRY)[0])));
     push({
       name: GENERIC_LINK.test(text) ? `@${h}` : stripMd(text).replace(/\bverified\b/gi, "").trim(),
       handle: `@${h}`,

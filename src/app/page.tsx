@@ -1,17 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 import { MatchCard } from "@/components/match-card";
-
-function Logo() {
-  return (
-    <span className="flex items-center gap-2">
-      <span className="grid h-6 w-6 place-items-center rounded-[6px] bg-ink">
-        <span className="h-2 w-2 rounded-full bg-lime" />
-      </span>
-      <span className="display text-[19px] tracking-[-0.03em]">briefly</span>
-    </span>
-  );
-}
+import { Logo } from "@/components/app-header";
 
 function Nav() {
   return (

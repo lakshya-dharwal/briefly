@@ -132,8 +132,8 @@ Both keys are optional for a first run:
 src/
 ├── app/
 │   ├── page.tsx              # Landing (hero + swipe→match→track animation)
-│   ├── brief/                # Screen 2: AI brief builder
-│   ├── discover/             # Screens 3–4: discovery + swipe deck
+│   ├── brief/                # Describe → editable brief + readiness meter
+│   ├── discover/             # Live discovery steps → swipe deck → shortlist
 │   └── api/
 │       ├── brief/route.ts    # Claude → structured CampaignBrief
 │       └── discover/route.ts # You.com search → normalize → rank
@@ -158,9 +158,9 @@ src/
 - [x] You.com Search + Contents pipeline that extracts real, cited creators from roundup pages
 - [x] AI brief builder (structured output) with a sample-mode fallback
 - [x] Landing page with the swipe → match → track animation
-- [ ] Brief builder UI with editable fields and the readiness meter
-- [ ] Discovery sequence driven by real `steps`
-- [ ] Swipe deck (drag, rotate, shortlist tray) and creator detail view
+- [x] Brief builder UI with editable fields and the readiness meter (Claude, or rule-based parsing without a key)
+- [x] Discovery sequence driven by real `steps`
+- [x] Swipe deck (drag, buttons, arrow keys, undo) and shortlist tray
 - [ ] Compare view for the shortlist
 - [ ] Invite flow and *It's a Match* screen (simulated acceptance, labeled)
 - [ ] AI collaboration agreement generator
