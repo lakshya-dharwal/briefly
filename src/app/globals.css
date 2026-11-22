@@ -1,29 +1,36 @@
 @import "tailwindcss";
 
+/* Palette: courier-dashboard lime, dense blue, near-black, one orange accent. */
 :root {
-  --cream: #fbf6ee;
-  --ink: #17131f;
-  --muted: #6b6475;
-  --coral: #ff5a4e;
-  --violet: #6c4cff;
-  --card: #ffffff;
-  --line: #ece4d8;
+  --bg: #efefec;
+  --surface: #ffffff;
+  --tile: #f4f4f2;
+  --ink: #17161b;
+  --muted: #6e6d75;
+  --line: #e4e4e0;
+  --lime: #d2fc59;
+  --lime-soft: #ecfdb8;
+  --blue: #3760f9;
+  --orange: #ff5a4e;
 }
 
 @theme inline {
-  --color-cream: var(--cream);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-tile: var(--tile);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
-  --color-coral: var(--coral);
-  --color-violet: var(--violet);
-  --color-card: var(--card);
   --color-line: var(--line);
-  --font-sans: var(--font-geist-sans);
+  --color-lime: var(--lime);
+  --color-lime-soft: var(--lime-soft);
+  --color-blue: var(--blue);
+  --color-orange: var(--orange);
+  --font-sans: var(--font-body);
   --font-display: var(--font-display);
 }
 
 body {
-  background: var(--cream);
+  background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
 }
