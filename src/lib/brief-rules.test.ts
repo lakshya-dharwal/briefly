@@ -31,3 +31,17 @@ describe("buildBriefFromRules", () => {
     expect(b.deliverableFormats).toContain("unboxing");
   });
 });
+
+describe("negations and missing brand", () => {
+  it("doesn't read 'not overly polished' as asking for polished", () => {
+    const b = buildBriefFromRules({ description: "Skincare videos, real and relatable, not overly polished advertisements." });
+    expect(b.preferredStyle).not.toContain("polished");
+    expect(b.preferredStyle).toContain("authentic");
+  });
+
+  it("leaves the brand empty instead of inventing 'Your brand'", () => {
+    const b = buildBriefFromRules({ description: "Three skincare videos for Gen Z" });
+    expect(b.brandName).toBe("");
+    expect(b.campaignName).toBe("Skincare campaign");
+  });
+});

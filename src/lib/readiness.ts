@@ -18,7 +18,8 @@ const CHECKS: Check[] = [
 ];
 
 export function readiness(brief: CampaignBrief) {
-  const remaining = CHECKS.filter((c) => !c.done(brief)).map((c) => c.label);
+  const items = CHECKS.map((c) => ({ label: c.label, done: c.done(brief) }));
+  const remaining = items.filter((i) => !i.done).map((i) => i.label);
   const percent = Math.round(((CHECKS.length - remaining.length) / CHECKS.length) * 100);
-  return { percent, remaining };
+  return { percent, remaining, items };
 }

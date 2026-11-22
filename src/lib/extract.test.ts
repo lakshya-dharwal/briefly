@@ -96,3 +96,15 @@ describe("names", () => {
     expect(c.name).toBe("Dixie D'Amelio");
   });
 });
+
+describe("directory sales pitches", () => {
+  it("strips 'Request upto top 1,000 … spreadsheet' from evidence", () => {
+    const [c] = extractHeuristic({
+      url: "https://creators.feedspot.com/x",
+      markdown:
+        "### 1. Bretman Rock\n\nBio legend Host of a radio show. TikTok Followers 19.9M Request upto top 1,000 Fashion TikTok Influencers with email contacts in a spreadsheet",
+    });
+    expect(c.evidence[0]).not.toMatch(/Request|spreadsheet/);
+    expect(c.evidence[0]).toMatch(/legend Host/);
+  });
+});

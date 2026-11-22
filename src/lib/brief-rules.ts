@@ -48,6 +48,14 @@ const PLATFORMS: [RegExp, string][] = [
   [/youtube|shorts/i, "youtube"],
 ];
 
+/**
+ * Drop negated clauses so "not overly polished" or "rather than cinematic"
+ * don't count as asking for that style.
+ */
+export function withoutNegations(t: string) {
+  return t.replace(/\b(?:not|no|never|without|avoid|less|rather than|instead of|don'?t want)\b[^.,;!?\n]{0,40}/gi, " ");
+}
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const hits = <T,>(text: string, table: [RegExp, T][]) =>
   [...new Set(table.filter(([re]) => re.test(text)).map(([, v]) => v))];
@@ -77,14 +85,15 @@ export function buildBriefFromRules(input: {
     : undefined;
 
   const niches = hits(t, NICHES);
-  const styles = hits(t, STYLES);
+  const positive = withoutNegations(t);
+  const styles = [...new Set([...hits(positive, STYLES), ...(/not (?:too |overly )?(?:polished|salesy|scripted)/i.test(t) ? ["authentic"] : [])])];
   const formats = hits(t, FORMATS);
   const platforms = hits(t, PLATFORMS);
   const category = niches[0] ?? "general";
   const audience = /gen ?z/i.test(t) ? "Gen Z" : /millennial/i.test(t) ? "Millennials" : undefined;
   const isUgc = /\bugc\b/i.test(t);
 
-  const brandName = input.brandName?.trim() || "Your brand";
+  const brandName = input.brandName?.trim() ?? "";
   const product = input.product?.trim() || `${cap(category)} product`;
 
   const required = [
@@ -95,7 +104,7 @@ export function buildBriefFromRules(input: {
   ];
 
   return {
-    campaignName: `${brandName} ${cap(category)} campaign`,
+    campaignName: [brandName, category === "general" ? "Creator" : cap(category), "campaign"].filter(Boolean).join(" "),
     brandName,
     product,
     category,

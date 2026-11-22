@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { ArrowRight, Check, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -44,19 +44,23 @@ function NumberInput({
   prefix,
   suffix,
   placeholder,
+  label,
 }: {
   value?: number;
   onChange: (v?: number) => void;
   prefix?: string;
   suffix?: string;
   placeholder: string;
+  label: string;
 }) {
   return (
-    <div className="flex max-w-[220px] items-center rounded-[10px] border border-line bg-surface px-3 focus-within:border-ink">
+    <label className="block">
+    <span className="label mb-1.5 block !text-[9px] text-faint">{label}</span>
+    <div className={`flex h-11 items-center rounded-[10px] border bg-surface px-3 focus-within:border-ink ${value === undefined ? "border-dashed border-line-strong" : "border-line"}`}>
       {prefix && <span className="text-muted">{prefix}</span>}
       <input
         inputMode="numeric"
-        className="w-full bg-transparent px-1 py-2 text-[15px] outline-none"
+        className="w-full bg-transparent px-1 py-2 text-[15px] tabular-nums outline-none"
         value={value ?? ""}
         placeholder={placeholder}
         onChange={(e) => {
@@ -66,17 +70,26 @@ function NumberInput({
       />
       {suffix && <span className="whitespace-nowrap text-sm text-muted">{suffix}</span>}
     </div>
+    </label>
   );
 }
+
+const CHIP_TONE = {
+  lime: "bg-lime text-ink",
+  blue: "bg-blue text-white",
+  tile: "bg-tile text-ink border border-line-strong",
+} as const;
 
 function Chips({
   values,
   onChange,
   placeholder,
+  tone = "tile",
 }: {
   values: string[];
   onChange: (v: string[]) => void;
   placeholder: string;
+  tone?: keyof typeof CHIP_TONE;
 }) {
   const [draft, setDraft] = useState("");
   const add = () => {
@@ -87,18 +100,18 @@ function Chips({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {values.map((v) => (
-        <span key={v} className="flex items-center gap-1 rounded-full bg-ink py-1 pl-3 pr-1.5 text-[13px] text-white">
+        <span key={v} className={`flex h-8 items-center gap-1 rounded-full pl-3 pr-1.5 text-[13px] font-medium ${CHIP_TONE[tone]}`}>
           {v}
           <button
             aria-label={`Remove ${v}`}
             onClick={() => onChange(values.filter((x) => x !== v))}
-            className="grid h-4 w-4 place-items-center rounded-full hover:bg-white/20"
+            className="grid h-5 w-5 place-items-center rounded-full opacity-60 hover:bg-black/10 hover:opacity-100"
           >
-            <X size={10} />
+            <X size={11} />
           </button>
         </span>
       ))}
-      <span className="flex items-center rounded-full border border-dashed border-line-strong pl-3 pr-1 focus-within:border-ink">
+      <span className="flex h-8 items-center rounded-full border border-dashed border-line-strong pl-3 pr-1 focus-within:border-ink">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -133,10 +146,12 @@ function Toggle({
           <button
             key={o}
             onClick={() => onChange(on ? selected.filter((x) => x !== o) : [...selected, o])}
-            className={`rounded-full border px-3 py-1 text-[13px] transition ${
-              on ? "border-ink bg-ink text-white" : "border-line bg-surface text-muted hover:border-ink hover:text-ink"
+            aria-pressed={on}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition ${
+              on ? "border-ink bg-ink font-medium text-white" : "border-line bg-surface text-muted hover:border-ink hover:text-ink"
             }`}
           >
+            {on && <Check size={13} strokeWidth={3} className="text-lime" />}
             {labels?.[o] ?? o}
           </button>
         );
@@ -260,63 +275,66 @@ export default function BriefPage() {
                 key="brief"
                 initial={{ y: 12 }}
                 animate={{ y: 0 }}
-                className="rounded-[20px] border border-line-strong bg-surface shadow-[0_24px_48px_-32px_rgba(17,17,19,0.3)]"
+                className="overflow-hidden rounded-[24px] border border-line-strong bg-surface shadow-[0_1px_0_rgba(0,0,0,0.04),0_28px_56px_-28px_rgba(17,17,19,0.35)]"
               >
-                <div className="flex items-center justify-between border-b border-line px-6 py-3">
-                  <span className="label text-muted">Campaign brief</span>
-                  <span className="label !text-[10px] text-faint">
-                    {mode === "ai" ? "Structured by Claude" : "Parsed from your words"}
-                  </span>
-                </div>
+                {/* Lime hero */}
+                <div className="relative overflow-hidden bg-lime px-6 pb-6 pt-4 text-ink">
+                  <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:radial-gradient(currentColor_1px,transparent_1px)] [background-size:14px_14px] [mask-image:linear-gradient(to_left,black,transparent_70%)]" />
+                  <div className="relative flex items-center justify-between">
+                    <span className="label !text-[10px] text-ink/60">Campaign brief</span>
+                    <span className="label rounded-full bg-ink/10 px-2 py-1 !text-[9px]">
+                      {mode === "ai" ? "Structured by Claude" : "Parsed from your words"}
+                    </span>
+                  </div>
 
-                {/* Readiness */}
-                {ready && (
-                  <div className="border-b border-line px-6 py-5">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="label text-muted">Campaign ready</p>
-                        <p className="display mt-1 text-[44px] leading-none tabular-nums">
-                          {ready.percent}
-                          <span className="text-[20px] text-faint">%</span>
-                        </p>
-                      </div>
-                      <p className="max-w-[220px] text-right text-[13px] text-muted">
-                        {ready.remaining.length === 0
+                  <div className="relative mt-6 flex items-end justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <input
+                        aria-label="Campaign name"
+                        className="display -ml-1 w-full rounded-[8px] bg-transparent px-1 text-[clamp(1.8rem,3.4vw,2.4rem)] leading-tight outline-none transition hover:bg-ink/5 focus:bg-ink/5"
+                        value={brief.campaignName}
+                        onChange={(e) => set("campaignName", e.target.value)}
+                      />
+                      <p className="mt-1 text-[13px] text-ink/65">
+                        {ready && ready.remaining.length === 0
                           ? "Everything we need. Ready to search."
-                          : `Next: ${ready.remaining[0].toLowerCase()}.`}
+                          : ready
+                            ? `Next: ${ready.remaining[0].toLowerCase()}.`
+                            : ""}
                       </p>
                     </div>
-                    <div className="mt-4 flex gap-1">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <motion.span
-                          key={i}
-                          className="h-1.5 flex-1 rounded-full"
-                          animate={{ backgroundColor: i < Math.round((ready.percent / 100) * 9) ? "#111113" : "#e3e3de" }}
-                        />
+                    {ready && (
+                      <div className="shrink-0 rounded-[16px] bg-ink px-3.5 py-2.5 text-center text-white">
+                        <p className="display text-[34px] leading-none tabular-nums">
+                          {ready.percent}
+                          <span className="text-[16px] opacity-50">%</span>
+                        </p>
+                        <p className="label mt-1 !text-[8px] opacity-60">Ready</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {ready && (
+                    <div className="relative mt-5 flex gap-1">
+                      {ready.items.map((it) => (
+                        <span key={it.label} title={it.label} className={`h-1.5 flex-1 rounded-full ${it.done ? "bg-ink" : "bg-ink/15"}`} />
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="px-6 pb-2">
-                  <Field label="Campaign">
-                    <input
-                      className={`${inputCls} display !text-[22px] tracking-[-0.02em]`}
-                      value={brief.campaignName}
-                      onChange={(e) => set("campaignName", e.target.value)}
-                    />
-                  </Field>
                   <Field label="Brand / product">
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input className={inputCls} value={brief.brandName} onChange={(e) => set("brandName", e.target.value)} />
-                      <input className={inputCls} value={brief.product} onChange={(e) => set("product", e.target.value)} />
+                      <input className={inputCls} aria-label="Brand name" placeholder="Brand name" value={brief.brandName} onChange={(e) => set("brandName", e.target.value)} />
+                      <input className={inputCls} aria-label="Product" placeholder="Product" value={brief.product} onChange={(e) => set("product", e.target.value)} />
                     </div>
                   </Field>
                   <Field label="Creator niche">
-                    <Chips values={brief.nicheKeywords} onChange={(v) => set("nicheKeywords", v)} placeholder="add niche" />
+                    <Chips tone="lime" values={brief.nicheKeywords} onChange={(v) => set("nicheKeywords", v)} placeholder="add niche" />
                   </Field>
                   <Field label="Style">
-                    <Chips values={brief.preferredStyle} onChange={(v) => set("preferredStyle", v)} placeholder="add style" />
+                    <Chips tone="blue" values={brief.preferredStyle} onChange={(v) => set("preferredStyle", v)} placeholder="add style" />
                   </Field>
                   <Field label="Formats">
                     <Toggle
@@ -334,15 +352,15 @@ export default function BriefPage() {
                       onChange={(v) => set("platforms", v)}
                     />
                   </Field>
-                  <Field label="Budget · deliverables · deadline">
-                    <div className="flex flex-wrap gap-2">
-                      <NumberInput value={brief.budgetUsd} onChange={(v) => set("budgetUsd", v)} prefix="$" placeholder="Budget" />
-                      <NumberInput value={brief.deliverableCount} onChange={(v) => set("deliverableCount", v)} suffix="videos" placeholder="#" />
-                      <NumberInput value={brief.timelineDays} onChange={(v) => set("timelineDays", v)} suffix="days" placeholder="#" />
+                  <Field label="Budget & timing">
+                    <div className="grid grid-cols-3 gap-2">
+                      <NumberInput label="Budget" value={brief.budgetUsd} onChange={(v) => set("budgetUsd", v)} prefix="$" placeholder="—" />
+                      <NumberInput label="Videos" value={brief.deliverableCount} onChange={(v) => set("deliverableCount", v)} placeholder="—" />
+                      <NumberInput label="Deadline" value={brief.timelineDays} onChange={(v) => set("timelineDays", v)} suffix="days" placeholder="—" />
                     </div>
                   </Field>
                   <Field label="Must include">
-                    <Chips values={brief.requiredContent} onChange={(v) => set("requiredContent", v)} placeholder="add item" />
+                    <Chips tone="tile" values={brief.requiredContent} onChange={(v) => set("requiredContent", v)} placeholder="add item" />
                   </Field>
                 </div>
 

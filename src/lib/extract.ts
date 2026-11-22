@@ -116,7 +116,10 @@ function tidy(s: string) {
       .replace(/\bType\s+(?:Mega|Macro|Micro|Nano|Mid)\b/gi, "")
       .replace(/\bGender\s+(?:Male|Female)\b/gi, "")
       .replace(/\b(?:TikTok|Instagram|YouTube)\s+Account\s+@[\w.]+/gi, "")
-      .replace(/^\s*Bio\s+/i, ""),
+      .replace(/^\s*Bio\s+/i, "")
+      // directory-site sales pitches, e.g. "Request upto top 1,000 … with email contacts in a spreadsheet"
+      .replace(/\bRequest up ?to\b.*?(?:spreadsheet\S*|$)/gi, "")
+      .replace(/\b(?:Download|Export) (?:the )?(?:full )?list\b.*$/i, ""),
   );
 }
 

@@ -1,8 +1,7 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
-import { WEIGHTS } from "@/lib/matching";
-import type { CreatorCandidate, MatchDimension, MatchResult, MatchSignals } from "@/lib/types";
+import { ArrowUpRight, Check, HelpCircle, Minus, Quote } from "lucide-react";
+import type { CampaignBrief, CreatorCandidate, MatchDimension, MatchResult, MatchSignals } from "@/lib/types";
 
 export type Ranked = { creator: CreatorCandidate; match: MatchResult; signals: MatchSignals };
 
@@ -12,10 +11,19 @@ const DIM_LABEL: Record<MatchDimension, string> = {
   portfolio: "Portfolio",
   format: "Format",
   budget: "Budget",
-  availability: "Availability",
+  availability: "Avail.",
 };
 
 const PLATFORM_NAME: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
+
+const FORMAT_WORD: Record<string, string> = {
+  "product-demo": "product demos",
+  testimonial: "reviews",
+  skit: "skits",
+  unboxing: "unboxings",
+  tutorial: "tutorials",
+  "talking-head": "talking-head videos",
+};
 
 export const domainOf = (url: string) => {
   try {
@@ -25,123 +33,206 @@ export const domainOf = (url: string) => {
   }
 };
 
-function ScoreBar({ signals }: { signals: MatchSignals }) {
-  const dims = Object.keys(WEIGHTS) as MatchDimension[];
+// One bold colour per creator, stable across renders.
+const TONES = [
+  { bg: "bg-lime", text: "text-ink", sub: "text-ink/60", chip: "bg-ink/10 text-ink", avatar: "bg-ink text-lime", badge: "bg-ink text-white" },
+  { bg: "bg-blue", text: "text-white", sub: "text-white/70", chip: "bg-white/15 text-white", avatar: "bg-white text-blue", badge: "bg-white text-ink" },
+  { bg: "bg-ink", text: "text-white", sub: "text-white/55", chip: "bg-white/10 text-white", avatar: "bg-lime text-ink", badge: "bg-lime text-ink" },
+  { bg: "bg-orange", text: "text-white", sub: "text-white/75", chip: "bg-white/15 text-white", avatar: "bg-white text-orange", badge: "bg-white text-ink" },
+] as const;
+
+export function toneFor(key: string) {
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return TONES[Math.abs(h) % TONES.length];
+}
+
+export function initials(name: string) {
+  const parts = name.replace(/^@/, "").replace(/[^\p{L}\p{N} ._-]/gu, "").split(/[\s._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+/** Turn the match signals into short, plain-English reasons. */
+function reasons(signals: MatchSignals, c: CreatorCandidate, brief?: CampaignBrief) {
+  const out: { kind: "yes" | "partial" | "unknown"; text: string }[] = [];
+  const niche = brief?.nicheKeywords[0] ?? brief?.category;
+  const styles = brief?.preferredStyle.slice(0, 2).join(" & ");
+  const format = brief?.deliverableFormats.map((f) => FORMAT_WORD[f]).find(Boolean);
+
+  if (signals.niche !== null && signals.niche >= 0.5) out.push({ kind: "yes", text: niche ? `Makes ${niche} content` : "Right niche for the brief" });
+  else if (signals.niche) out.push({ kind: "partial", text: niche ? `Some ${niche} content` : "Partly in your niche" });
+
+  if (signals.style !== null && signals.style >= 0.5) out.push({ kind: "yes", text: styles ? `${cap(styles)} tone` : "Tone matches the brief" });
+  else if (signals.style) out.push({ kind: "partial", text: styles ? `Partly ${styles}` : "Tone partly matches" });
+
+  if (signals.format !== null && signals.format >= 0.5) out.push({ kind: "yes", text: format ? `Has done ${format}` : "Has done this format" });
+
+  const sources = c.sourceUrls.length;
+  if (sources > 1) out.push({ kind: "yes", text: `Mentioned on ${sources} different sites` });
+
+  if (signals.budget === null || signals.availability === null) {
+    out.push({ kind: "unknown", text: "Rate and availability: ask them" });
+  }
+  return out.slice(0, 4);
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Clean a source snippet into one readable quote. */
+function tidyQuote(s: string) {
+  const t = s
+    // drop "words" built from decorative sparkle characters, e.g. "·˚₊‧୨୧‧₊˚·"
+    .split(/\s+/)
+    .filter((w) => !/[˚₊‧⋆✧✦｡ﾟ゜⁺₊˖°]/u.test(w))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .replace(/^["“]|["”]$/g, "")
+    .replace(/^[\s·•.,;:-]+/, "")
+    .trim();
+  return t.length > 180 ? `${t.slice(0, 180).replace(/\s\S*$/, "")}…` : t;
+}
+
+function SignalChips({ signals }: { signals: MatchSignals }) {
   return (
-    <div>
-      <div className="flex h-2.5 gap-[3px]">
-        {dims.map((d) => {
-          const v = signals[d];
-          return (
-            <div
-              key={d}
-              style={{ flexBasis: `${WEIGHTS[d] * 100}%` }}
-              className={`relative overflow-hidden rounded-[2px] ${v === null ? "hatch" : "bg-line"}`}
-            >
-              {v !== null && <div className="absolute inset-y-0 left-0 bg-ink" style={{ width: `${v * 100}%` }} />}
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex gap-[3px]">
-        {dims.map((d) => (
-          <span key={d} style={{ flexBasis: `${WEIGHTS[d] * 100}%` }} className="label overflow-hidden whitespace-nowrap !text-[9px] text-faint">
-            {WEIGHTS[d] >= 0.15 ? DIM_LABEL[d] : DIM_LABEL[d][0]}
+    <div className="flex flex-wrap gap-1.5">
+      {(Object.keys(DIM_LABEL) as MatchDimension[]).map((d) => {
+        const v = signals[d];
+        const cls =
+          v === null
+            ? "border border-dashed border-line-strong text-muted"
+            : v >= 0.6
+              ? "bg-lime text-ink"
+              : v > 0
+                ? "bg-lime-soft text-ink"
+                : "bg-tile text-faint";
+        return (
+          <span key={d} className={`label inline-flex h-6 items-center gap-1 rounded-full px-2 !text-[10px] ${cls}`}>
+            {DIM_LABEL[d]}
+            <span className="font-semibold">{v === null ? "?" : Math.round(v * 100)}</span>
           </span>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
-export function CreatorCard({ r, index, total }: { r: Ranked; index: number; total: number }) {
+export function CreatorCard({
+  r,
+  index,
+  total,
+  brief,
+}: {
+  r: Ranked;
+  index: number;
+  total: number;
+  brief?: CampaignBrief;
+}) {
   const { creator: c, match: m, signals } = r;
   const isSample = c.origin === "sample";
-  const unknown = m.unknown.map((d) => DIM_LABEL[d].toLowerCase());
-  const evidence = c.evidenceSnippets.slice(0, 2);
+  const tone = toneFor(c.id);
+  const quote = c.evidenceSnippets[0] ? tidyQuote(c.evidenceSnippets[0]) : null;
+  const whys = reasons(signals, c, brief);
+  const platform = c.platform ? PLATFORM_NAME[c.platform] ?? c.platform : null;
+  const primarySource = c.sourceUrls[0] ? domainOf(c.sourceUrls[0]) : null;
 
   return (
-    <article className="flex h-full flex-col rounded-[20px] border border-line-strong bg-surface shadow-[0_1px_0_rgba(0,0,0,0.04),0_24px_48px_-24px_rgba(17,17,19,0.25)]">
-      <header className="flex items-center justify-between border-b border-line px-5 py-3">
-        <span className="label text-muted">
-          Match {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+    <article className="flex h-full flex-col overflow-hidden rounded-[24px] border border-line-strong bg-surface shadow-[0_1px_0_rgba(0,0,0,0.04),0_28px_56px_-28px_rgba(17,17,19,0.35)]">
+      {/* ---------- Colour hero ---------- */}
+      <div className={`relative overflow-hidden px-5 pb-5 pt-4 ${tone.bg} ${tone.text}`}>
+        {/* texture: dot lattice + oversized initials */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(currentColor_1px,transparent_1px)] [background-size:14px_14px] [mask-image:linear-gradient(to_left,black,transparent_70%)]" />
+        <span className="display pointer-events-none absolute -bottom-6 -right-2 select-none text-[150px] leading-none opacity-[0.12]">
+          {initials(c.name)}
         </span>
-        <span
-          className={`label rounded-[4px] px-1.5 py-0.5 !text-[9px] ${
-            isSample ? "border border-line text-muted" : "bg-lime-soft text-ink"
-          }`}
-        >
-          {isSample ? "Sample profile" : "Live web · unverified"}
-        </span>
-      </header>
 
-      <div className="grid grid-cols-[1fr_auto] items-end gap-4 px-5 pt-5">
-        <div className="min-w-0">
-          <h3 className="display truncate text-[28px] leading-none">{c.name}</h3>
-          <p className="mt-2 truncate text-[13px] text-muted">
-            {[c.handle, c.platform && (PLATFORM_NAME[c.platform] ?? c.platform)].filter(Boolean).join(" · ") ||
-              domainOf(c.profileUrl)}
-          </p>
+        <div className="relative flex items-center justify-between">
+          <span className={`label !text-[10px] ${tone.sub}`}>
+            Match {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          </span>
+          <span className={`label rounded-full px-2 py-1 !text-[9px] ${tone.chip}`}>
+            {isSample ? "Sample profile" : "Live web · unverified"}
+          </span>
         </div>
-        <div className="text-right">
-          {m.showPreciseScore ? (
-            <p className="display text-[56px] leading-none tabular-nums">
-              {m.score}
-              <span className="text-[24px] text-faint">%</span>
+
+        <div className="relative mt-8 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <span className={`grid h-14 w-14 place-items-center rounded-full text-[18px] font-bold ring-4 ring-white/25 ${tone.avatar}`}>
+              {initials(c.name)}
+            </span>
+            <h3 className="display mt-3 line-clamp-2 text-[30px] leading-[0.95]">{c.name}</h3>
+            <p className={`mt-1.5 truncate text-[13px] ${tone.sub}`}>
+              {[c.handle && c.handle !== c.name ? c.handle : null, platform, !platform && primarySource ? `via ${primarySource}` : null]
+                .filter(Boolean)
+                .join(" · ") || "Creator"}
             </p>
-          ) : (
-            <p className="display max-w-[150px] text-[18px] leading-tight">{m.label.split(" — ")[0]}</p>
-          )}
-          <p className="label mt-1 !text-[9px] text-faint">
-            {m.showPreciseScore ? "Estimated match" : `${Math.round(m.coverage * 100)}% of signals known`}
-          </p>
+          </div>
+
+          <div className={`shrink-0 rounded-[16px] px-3.5 py-2.5 text-center ${tone.badge}`}>
+            {m.showPreciseScore ? (
+              <p className="display text-[34px] leading-none tabular-nums">
+                {m.score}
+                <span className="text-[16px] opacity-50">%</span>
+              </p>
+            ) : (
+              <p className="max-w-[92px] text-[13px] font-semibold leading-tight">{m.label.split(" — ")[0]}</p>
+            )}
+            <p className="label mt-1 !text-[8px] opacity-60">Match</p>
+          </div>
         </div>
       </div>
 
+      {/* ---------- Why it fits ---------- */}
       <div className="px-5 pt-5">
-        <ScoreBar signals={signals} />
+        <p className="label text-muted">Why it fits</p>
+        <ul className="mt-3 space-y-2">
+          {whys.map((w) => (
+            <li key={w.text} className="flex items-center gap-2.5 text-[15px] leading-snug">
+              <span
+                className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${
+                  w.kind === "yes" ? "bg-lime text-ink" : w.kind === "partial" ? "bg-lime-soft text-ink" : "border border-line-strong text-muted"
+                }`}
+              >
+                {w.kind === "yes" ? <Check size={12} strokeWidth={3} /> : w.kind === "partial" ? <Minus size={12} strokeWidth={3} /> : <HelpCircle size={12} />}
+              </span>
+              <span className={w.kind === "unknown" ? "text-muted" : ""}>{w.text}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="mt-5 flex-1 overflow-hidden border-t border-line px-5 py-4">
-        <p className="label text-muted">Why this match</p>
-        {evidence.length ? (
-          <ul className="mt-3 space-y-3">
-            {evidence.map((e) => (
-              <li key={e} className="line-clamp-3 text-[14px] leading-snug">
-                “{e}”
-              </li>
-            ))}
-          </ul>
+      {/* ---------- Pull quote ---------- */}
+      <div className="min-h-0 flex-1 px-5 pt-4">
+        {quote ? (
+          <figure className="relative rounded-[14px] bg-tile px-4 pb-3 pt-3.5">
+            <Quote size={16} className="absolute -top-2 left-3 fill-blue text-blue" />
+            <blockquote className="line-clamp-3 text-[14px] leading-relaxed text-ink-2">{quote}</blockquote>
+            {primarySource && <figcaption className="label mt-2 !text-[9px] text-faint">— {primarySource}</figcaption>}
+          </figure>
         ) : (
-          <p className="mt-3 text-[14px] text-muted">No description found on the source page.</p>
-        )}
-        {unknown.length > 0 && (
-          <p className="mt-4 flex items-start gap-2 text-[12px] text-muted">
-            <span className="hatch mt-1 h-2.5 w-4 shrink-0 rounded-[2px]" />
-            {unknown.join(", ")} unknown. Lowers confidence, never counts as a match.
-          </p>
+          <p className="text-[13px] text-muted">The source names this creator but doesn’t describe their content yet.</p>
         )}
       </div>
 
-      <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3">
-        {c.sourceUrls.length ? (
-          c.sourceUrls.slice(0, 2).map((u) => (
+      {/* ---------- Signals + source ---------- */}
+      <div className="mt-4 border-t border-line px-5 py-3.5">
+        <SignalChips signals={signals} />
+        <div className="mt-3 flex items-center justify-between">
+          {c.sourceUrls.length ? (
             <a
-              key={u}
-              href={u}
+              href={c.profileUrl.startsWith("http") ? c.profileUrl : c.sourceUrls[0]}
               target="_blank"
               rel="noreferrer"
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-[12px] text-blue hover:underline"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-blue hover:underline"
             >
-              <ArrowUpRight size={12} /> {domainOf(u)}
+              {c.portfolioUrls.length && platform ? `View on ${platform}` : "View source"} <ArrowUpRight size={13} />
             </a>
-          ))
-        ) : (
-          <span className="text-[12px] text-faint">Fictional demo profile, no sources</span>
-        )}
-        {c.sourceUrls.length > 2 && <span className="text-[12px] text-faint">+{c.sourceUrls.length - 2} more</span>}
-      </footer>
+          ) : (
+            <span className="text-[12px] text-faint">Fictional demo profile</span>
+          )}
+          {c.sourceUrls.length > 1 && <span className="text-[12px] text-faint">{c.sourceUrls.length} sources</span>}
+        </div>
+      </div>
     </article>
   );
 }

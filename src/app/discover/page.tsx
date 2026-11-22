@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { ArrowUpRight, Check, Heart, Loader2, Minus, RotateCcw, X } from "lucide-react";
+import { Check, Heart, Loader2, Minus, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-header";
-import { CreatorCard, domainOf, type Ranked } from "@/components/creator-card";
+import { CreatorCard, type Ranked } from "@/components/creator-card";
+import { ShortlistPanel } from "@/components/shortlist-panel";
 import { SAMPLE_BRIEF } from "@/data/sample-brief";
 import { loadBrief } from "@/lib/brief-store";
 import type { CampaignBrief } from "@/lib/types";
@@ -20,11 +21,13 @@ function SwipeTop({
   r,
   index,
   total,
+  brief,
   onDecide,
 }: {
   r: Ranked;
   index: number;
   total: number;
+  brief?: CampaignBrief;
   onDecide: (dir: 1 | -1) => void;
 }) {
   const x = useMotionValue(0);
@@ -52,7 +55,7 @@ function SwipeTop({
       }}
       exit="exit"
     >
-      <CreatorCard r={r} index={index} total={total} />
+      <CreatorCard r={r} index={index} total={total} brief={brief} />
       <motion.span
         style={{ opacity: likeOpacity }}
         className="label pointer-events-none absolute left-5 top-14 -rotate-12 rounded-[6px] border-2 border-ink bg-lime px-2 py-1 !text-[13px] font-semibold text-ink"
@@ -263,11 +266,11 @@ export default function DiscoverPage() {
                       <>
                         {next && (
                           <div className="absolute inset-0 translate-y-3 scale-[0.96] opacity-60">
-                            <CreatorCard r={next} index={pos + 1} total={deck.length} />
+                            <CreatorCard r={next} index={pos + 1} total={deck.length} brief={brief ?? undefined} />
                           </div>
                         )}
                         <AnimatePresence custom={dir}>
-                          <SwipeTop key={current.creator.id} r={current} index={pos} total={deck.length} onDecide={decide} />
+                          <SwipeTop key={current.creator.id} r={current} index={pos} total={deck.length} brief={brief ?? undefined} onDecide={decide} />
                         </AnimatePresence>
                       </>
                     ) : (
@@ -324,58 +327,9 @@ export default function DiscoverPage() {
           </AnimatePresence>
         </section>
 
-        {/* Shortlist tray */}
+        {/* Shortlist */}
         <aside className="lg:sticky lg:top-8 lg:self-start">
-          <div className="rounded-[18px] border border-line bg-surface">
-            <div className="flex items-center justify-between border-b border-line px-5 py-3">
-              <p className="label text-muted">Shortlist</p>
-              <span className="label rounded-full bg-ink px-2 py-0.5 !text-[10px] text-lime">{shortlist.length}</span>
-            </div>
-            {shortlist.length === 0 ? (
-              <p className="px-5 py-6 text-[14px] text-faint">Swipe right on creators you like. A shortlist isn&apos;t a booking. It&apos;s a match only once they accept.</p>
-            ) : (
-              <ul>
-                <AnimatePresence initial={false}>
-                  {shortlist.map((r) => (
-                    <motion.li
-                      key={r.creator.id}
-                      initial={{ x: -8 }}
-                      animate={{ x: 0 }}
-                      className="border-b border-line last:border-0"
-                    >
-                      <div className="flex items-center justify-between gap-3 px-5 py-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-[14px] font-medium">{r.creator.name}</p>
-                          <p className="truncate text-[12px] text-muted">
-                            {r.creator.origin === "sample" ? "Sample profile" : r.creator.handle ?? domainOf(r.creator.profileUrl)}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-3">
-                          <span className="text-[13px] tabular-nums text-muted">
-                            {r.match.showPreciseScore ? `${r.match.score}%` : "—"}
-                          </span>
-                          {r.creator.sourceUrls[0] && (
-                            <a href={r.creator.profileUrl} target="_blank" rel="noreferrer" aria-label="Open source" className="text-blue">
-                              <ArrowUpRight size={14} />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
-              </ul>
-            )}
-          </div>
-          {shortlist.length > 0 && (
-            <button
-              disabled
-              title="Coming next: invites and AI collaboration agreement"
-              className="mt-3 w-full rounded-full border border-line py-3 text-sm font-medium text-muted"
-            >
-              Invite to campaign · coming next
-            </button>
-          )}
+          <ShortlistPanel items={shortlist} onRemove={(id) => setShortlist((s) => s.filter((x) => x.creator.id !== id))} />
         </aside>
       </div>
     </main>
