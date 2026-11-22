@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
-/* Palette: courier-dashboard lime, dense blue, near-black, one orange accent. */
+/*
+  Mostly monochrome. Lime is the single accent and always means
+  "match / progress / verified". Blue only marks sources (links).
+  Orange only marks a pending state.
+*/
 :root {
-  --bg: #efefec;
+  --bg: #f3f3ef;
   --surface: #ffffff;
-  --tile: #f4f4f2;
-  --ink: #17161b;
-  --muted: #6e6d75;
-  --line: #e4e4e0;
+  --tile: #f6f6f3;
+  --ink: #111113;
+  --ink-2: #2a2a2e;
+  --muted: #6f6f76;
+  --faint: #a3a3a9;
+  --line: #e3e3de;
+  --line-strong: #d3d3cc;
   --lime: #d2fc59;
-  --lime-soft: #ecfdb8;
+  --lime-deep: #b9e83a;
+  --lime-soft: #f0fdc7;
   --blue: #3760f9;
   --orange: #ff5a4e;
 }
@@ -19,18 +27,53 @@
   --color-surface: var(--surface);
   --color-tile: var(--tile);
   --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-lime: var(--lime);
+  --color-lime-deep: var(--lime-deep);
   --color-lime-soft: var(--lime-soft);
   --color-blue: var(--blue);
   --color-orange: var(--orange);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body), system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Hatched fill for "unknown" score segments. */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--faint) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/* Faint dot lattice used behind the hero object. */
+.lattice {
+  background-image: radial-gradient(var(--line-strong) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
