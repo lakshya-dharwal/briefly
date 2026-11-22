@@ -110,6 +110,7 @@ const NEXT_ENTRY = new RegExp(`\\[|${NEXT_HEAD.source}`);
 function tidy(s: string) {
   return noEmails(
     s
+      .replace(/\S*@\S+\.\S+/g, "") // emails first, before the domain stripper sees them
       .replace(/\\+/g, " ")
       .replace(/\+\s*Follow\b/gi, "")
       .replace(/Get Email Contact/gi, "")
@@ -119,8 +120,45 @@ function tidy(s: string) {
       .replace(/^\s*Bio\s+/i, "")
       // directory-site sales pitches, e.g. "Request upto top 1,000 … with email contacts in a spreadsheet"
       .replace(/\bRequest up ?to\b.*?(?:spreadsheet\S*|$)/gi, "")
-      .replace(/\b(?:Download|Export) (?:the )?(?:full )?list\b.*$/i, ""),
+      .replace(/\b(?:Download|Export) (?:the )?(?:full )?list\b.*$/i, "")
+      // links and handles-as-labels: "store.x.com", "ig: itss. moria", "Snap:banel", "Instagram Handle @nikki"
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\b[\w-]+(?:\.[\w-]+)*\.(?:com|co|io|to|me|ly|link|bio|net|org|shop|store|tv)\b(?:\/\S*)?/gi, "")
+      .replace(/\bInstagram Handle\s*@[\w.]+/gi, "")
+      .replace(/\b(?:ig|insta|snap(?:chat)?|yt)\b(?:\s*\+\s*\w+)?\s*:\s*@?\w+(?:[._]\w+)*(?:\.\s?[a-z]+)?/gi, "")
+      .replace(/\b(?:LinkedIn|Role)\s*:\s*/gi, "")
+      .replace(/\bE-?mail\b\s*\S{0,3}\s*:?/gi, "")
+      // follower filler and stat runs: "TikTok Followers 1.6M", "- 4.7M - 3.9M - 3.8M"
+      .replace(/\b(?:(?:TikTok|Instagram|YouTube)\s+)?Followers\s+[\d.,]+\s*[KkMm]?\b/g, "")
+      .replace(/(?:\s[-–]\s*\d[\d.,]*\s*[KkMm]?\b){2,}/g, "")
+      // contact asks: "DM 4 PAID PROMO"
+      .replace(/\bDM\s*(?:4|for|me)?\s*(?:paid\s*)?(?:promos?|collabs?|business)\b/gi, "")
+      // invisible fillers, link arrows, envelope/mail emoji, emoji spam
+      .replace(/[\u2800\u200B\u3164\u00AD]/g, "")
+      .replace(/[⬇👇↓🔗📧💌]\uFE0F?/gu, "")
+      // orphaned skin-tone marks left behind by removed emoji (e.g. 👇🏼 -> 🏼)
+      .replace(/(^|[^\p{Extended_Pictographic}️‍])[\u{1F3FB}-\u{1F3FF}]/gu, "$1")
+      // decorative sparkle "words" like "⋆ ˚｡⋆୨୧˚"
+      .split(/\s+/)
+      .filter((w) => !/[˚₊‧⋆✧✦｡ﾟ゜⁺˖]/u.test(w))
+      .join(" ")
+      .replace(/(\p{Extended_Pictographic}\uFE0F?)\1{2,}/gu, "$1")
+      // tidy leftover separators
+      .replace(/(?:\s*[-–|•:]\s*){2,}/g, " · ")
+      .replace(/^[\s\-–|•:·]+|[\s\-–|•:·]+$/g, ""),
   );
+}
+
+/** Accounts that read like a brand or shop, not a person. */
+const BRAND_COPY = /\bshop now\b|trusted by [\d,]+\+?\s*customers|\bour (?:products|store|shop)\b|\buse code\s+\w+/i;
+
+/** Display name without emoji or decorative symbols ("✨Yandy✨" -> "Yandy"). */
+export function displayName(raw: string) {
+  const t = raw
+    .replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\uFE0F\u200D♡♥★☆✿❀•·˚₊‧]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return t || raw.trim();
 }
 
 /** Split markdown into "N. Name" heading entries with the text under each. */
@@ -160,7 +198,8 @@ export function extractHeuristic(page: SourcePage): ExtractedCreator[] {
 
   // 1. Numbered roundup entries: "### 9. @handle" / "### 17. Lisa Baisl" + the paragraph under it.
   for (const block of numberedBlocks(md)) {
-    const name = cleanName(stripMd(block.heading));
+    const name = displayName(cleanName(stripMd(block.heading)));
+    if (BRAND_COPY.test(block.body)) continue;
     if (name.length < 2 || name.length > 60) continue;
     const handle = name.startsWith("@") ? name.split(/\s/)[0] : firstHandle(block.body);
     const evidence = clip(tidy(stripMd(block.body.split(NEXT_HEAD)[0])));
@@ -183,7 +222,9 @@ export function extractHeuristic(page: SourcePage): ExtractedCreator[] {
     const h = rawHandle.replace("@", "");
     if (NOT_HANDLES.has(h.toLowerCase())) continue;
     const after = md.slice((m.index ?? 0) + whole.length, (m.index ?? 0) + whole.length + 800);
-    const rest = clip(tidy(stripMd(after.split(NEXT_ENTRY)[0])));
+    const rawAfter = after.split(NEXT_ENTRY)[0];
+    if (BRAND_COPY.test(rawAfter)) continue;
+    const rest = clip(tidy(stripMd(rawAfter)));
     push({
       name: GENERIC_LINK.test(text) ? `@${h}` : stripMd(text).replace(/\bverified\b/gi, "").trim(),
       handle: `@${h}`,
@@ -240,7 +281,7 @@ export function mergeCreators(found: ExtractedCreator[]): CreatorCandidate[] {
     const sourceUrls = uniq(group.map((g) => g.sourceUrl));
     return {
       id: `you-${hash(k)}`,
-      name: best.name,
+      name: displayName(best.name),
       handle: group.find((g) => g.handle)?.handle,
       platform: group.find((g) => g.platform)?.platform,
       profileUrl: profileUrl ?? sourceUrls[0],

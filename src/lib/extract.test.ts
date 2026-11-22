@@ -108,3 +108,47 @@ describe("directory sales pitches", () => {
     expect(c.evidence[0]).toMatch(/legend Host/);
   });
 });
+
+describe("messy bios from live results", () => {
+  const ev = (body: string, heading = "Test Creator") =>
+    extractHeuristic({ url: "https://creators.feedspot.com/x", markdown: `### 1. ${heading}\n\n${body}` })[0];
+
+  it("drops follower filler and stat runs", () => {
+    const c = ev("Makeup and skincare I use - 4.7M - 3.9M - 3.8M TikTok Followers 1.6M");
+    expect(c.evidence[0]).toBe("Makeup and skincare I use");
+  });
+
+  it("drops links, platform labels and contact asks", () => {
+    const c = ev("skincare + lifestyle : DM 4 PAID PROMO ig: itss. moria fashion + sustainability youtube store.rajanimd.com");
+    expect(c.evidence[0]).not.toMatch(/DM|PROMO|ig:|itss|rajanimd|\.com/i);
+    expect(c.evidence[0]).toMatch(/skincare \+ lifestyle/);
+  });
+
+  it("collapses emoji spam and invisible fillers", () => {
+    const c = ev("VIRGOAT 🧿🧿🧿🧿🧿🧿 makeup ⠀⠀⠀⠀ beauty skincare 👇👇");
+    expect(c.evidence[0]).toBe("VIRGOAT 🧿 makeup beauty skincare");
+  });
+
+  it("skips brand accounts", () => {
+    expect(ev("Nourish your glow with organic skincare. Trusted by 25,000+ customers. Shop now", "SKYNCARE")).toBeUndefined();
+  });
+
+  it("strips emoji from display names", () => {
+    expect(ev("skincare and makeup tutorials every week", "✨Yandy✨").name).toBe("Yandy");
+    expect(ev("skincare and grwm videos for everyone", "Geniee 👸🏻🤍").name).toBe("Geniee");
+  });
+});
+
+describe("leftovers", () => {
+  const ev = (body: string) =>
+    extractHeuristic({ url: "https://creators.feedspot.com/x", markdown: `### 1. Someone\n\n${body}` })[0].evidence[0];
+  it("removes a whole 'ig: itss. moria' label", () => {
+    expect(ev("skincare + lifestyle : ig: itss. moria")).toBe("skincare + lifestyle");
+  });
+  it("leaves no orphan skin-tone marks", () => {
+    expect(ev("Makeup and skincare I use👇🏼 every day")).toBe("Makeup and skincare I use every day");
+  });
+  it("drops decorative sparkle words", () => {
+    expect(ev("⋆ ˚｡⋆୨୧˚ ˚୨୧⋆｡˚ ⋆ makeup tips skincare recs")).toBe("makeup tips skincare recs");
+  });
+});

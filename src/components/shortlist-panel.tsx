@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Heart, Send, X } from "lucide-react";
+import { handleRepeatsName } from "@/lib/display";
 import { domainOf, initials, toneFor, type Ranked } from "@/components/creator-card";
 
 const PLATFORM_NAME: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
@@ -10,7 +11,7 @@ function subline(r: Ranked) {
   const c = r.creator;
   if (c.origin === "sample") return "Sample profile";
   const platform = c.platform ? PLATFORM_NAME[c.platform] ?? c.platform : null;
-  const handle = c.handle && c.handle.toLowerCase() !== c.name.toLowerCase() ? c.handle : null;
+  const handle = c.handle && !handleRepeatsName(c.name, c.handle) ? c.handle : null;
   return [handle, platform].filter(Boolean).join(" · ") || `via ${domainOf(c.sourceUrls[0] ?? c.profileUrl)}`;
 }
 

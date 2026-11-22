@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRight, Check, HelpCircle, Minus, Quote } from "lucide-react";
+import { handleRepeatsName } from "@/lib/display";
 import type { CampaignBrief, CreatorCandidate, MatchDimension, MatchResult, MatchSignals } from "@/lib/types";
 
 export type Ranked = { creator: CreatorCandidate; match: MatchResult; signals: MatchSignals };
@@ -161,7 +162,7 @@ export function CreatorCard({
             </span>
             <h3 className="display mt-3 line-clamp-2 text-[30px] leading-[0.95]">{c.name}</h3>
             <p className={`mt-1.5 truncate text-[13px] ${tone.sub}`}>
-              {[c.handle && c.handle !== c.name ? c.handle : null, platform, !platform && primarySource ? `via ${primarySource}` : null]
+              {[c.handle && !handleRepeatsName(c.name, c.handle) ? c.handle : null, platform, !platform && primarySource ? `via ${primarySource}` : null]
                 .filter(Boolean)
                 .join(" · ") || "Creator"}
             </p>

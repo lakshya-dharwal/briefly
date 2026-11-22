@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
-import { MatchCard } from "@/components/match-card";
+import { HeroStage } from "@/components/hero-stage";
 import { Logo } from "@/components/app-header";
 
 function Nav() {
@@ -33,7 +33,7 @@ function Hero() {
         <h1 className="display mt-6 text-[clamp(3rem,7.2vw,6.4rem)]">
           Hire creators
           <br />
-          for the work,
+          for the <span className="relative inline-block">work<span aria-hidden className="absolute -bottom-1 left-0 right-0 h-[0.14em] rounded-full bg-lime" /></span>,
           <br />
           <span className="text-faint">not the followers.</span>
         </h1>
@@ -55,12 +55,21 @@ function Hero() {
             See how matching works
           </a>
         </div>
+        <ul className="mt-10 flex flex-wrap gap-2">
+          {[
+            ["bg-lime-deep", "Live web search"],
+            ["bg-blue", "Evidence on every match"],
+            ["bg-orange", "Payments simulated in demo"],
+          ].map(([dot, text]) => (
+            <li key={text} className="flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] text-ink-2">
+              <span className={`h-2 w-2 rounded-full ${dot}`} />
+              {text}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="relative">
-        <div className="lattice absolute -inset-10 -z-10 [mask-image:radial-gradient(closest-side,black,transparent)]" />
-        <MatchCard />
-      </div>
+      <HeroStage />
     </section>
   );
 }
