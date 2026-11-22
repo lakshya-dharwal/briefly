@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { SAMPLE_BRIEF_PROMPT } from "@/data/sample-brief";
 import { saveBrief } from "@/lib/brief-store";
 import { readiness } from "@/lib/readiness";
+import { LIMITS, briefErrors, type FieldErrors } from "@/lib/brief-schema";
 import type { CampaignBrief, DeliverableFormat } from "@/lib/types";
 
 const EXAMPLES = [
@@ -26,11 +27,20 @@ const FORMAT_LABEL: Record<DeliverableFormat, string> = {
   other: "Other",
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+const ERROR_TEXT = "text-[#c2410c]"; // orange that passes contrast on light backgrounds
+
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div className="grid gap-2 border-t border-line py-4 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-6">
-      <p className="label pt-2 text-muted">{label}</p>
-      <div>{children}</div>
+      <p className={`label pt-2 ${error ? ERROR_TEXT : "text-muted"}`}>{label}</p>
+      <div>
+        {children}
+        {error && (
+          <p role="alert" className={`mt-1.5 text-[12px] font-medium ${ERROR_TEXT}`}>
+            {error}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -45,6 +55,7 @@ function NumberInput({
   suffix,
   placeholder,
   label,
+  invalid = false,
 }: {
   value?: number;
   onChange: (v?: number) => void;
@@ -52,14 +63,17 @@ function NumberInput({
   suffix?: string;
   placeholder: string;
   label: string;
+  invalid?: boolean;
 }) {
   return (
     <label className="block">
     <span className="label mb-1.5 block !text-[9px] text-faint">{label}</span>
-    <div className={`flex h-11 items-center rounded-[10px] border bg-surface px-3 focus-within:border-ink ${value === undefined ? "border-dashed border-line-strong" : "border-line"}`}>
+    <div className={`flex h-11 items-center rounded-[10px] border bg-surface px-3 focus-within:border-ink ${invalid ? "border-[#c2410c] bg-orange/5" : value === undefined ? "border-dashed border-line-strong" : "border-line"}`}>
       {prefix && <span className="text-muted">{prefix}</span>}
       <input
         inputMode="numeric"
+        maxLength={9}
+        aria-invalid={invalid || undefined}
         className="w-full bg-transparent px-1 py-2 text-[15px] tabular-nums outline-none"
         value={value ?? ""}
         placeholder={placeholder}
@@ -93,8 +107,8 @@ function Chips({
 }) {
   const [draft, setDraft] = useState("");
   const add = () => {
-    const v = draft.trim().toLowerCase();
-    if (v && !values.includes(v)) onChange([...values, v]);
+    const v = draft.trim().toLowerCase().slice(0, LIMITS.tag);
+    if (v && !values.includes(v) && values.length < LIMITS.tags) onChange([...values, v]);
     setDraft("");
   };
   return (
@@ -115,6 +129,8 @@ function Chips({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          maxLength={LIMITS.tag}
+          disabled={values.length >= LIMITS.tags}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           placeholder={placeholder}
           className="w-24 bg-transparent py-1 text-[13px] outline-none"
@@ -170,6 +186,9 @@ export default function BriefPage() {
   const [error, setError] = useState<string | null>(null);
 
   const ready = useMemo(() => (brief ? readiness(brief) : null), [brief]);
+  const errors: FieldErrors = useMemo(() => (brief ? briefErrors(brief) : {}), [brief]);
+  const errorCount = Object.keys(errors).length;
+  const hasErrors = errorCount > 0;
   const set = <K extends keyof CampaignBrief>(k: K, v: CampaignBrief[K]) =>
     setBrief((b) => (b ? { ...b, [k]: v } : b));
 
@@ -201,7 +220,7 @@ export default function BriefPage() {
   }
 
   function findMatches() {
-    if (!brief) return;
+    if (!brief || hasErrors) return;
     saveBrief(brief);
     router.push("/discover");
   }
@@ -223,21 +242,25 @@ export default function BriefPage() {
             <input
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
+              maxLength={LIMITS.name}
+              aria-label="Brand name (optional)"
               placeholder="Brand name (optional)"
               className="w-full border-b border-line bg-transparent px-3 py-2.5 text-[15px] outline-none"
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              maxLength={LIMITS.description.max}
+              aria-label="Describe your campaign"
               placeholder="We're launching a skincare product and want three funny, authentic Gen Z UGC videos…"
               rows={5}
               className="w-full resize-none bg-transparent px-3 py-3 text-[16px] leading-relaxed outline-none"
             />
             <div className="flex items-center justify-between gap-3 px-2 pb-1">
-              <span className="label !text-[10px] text-faint">{description.length}/4000</span>
+              <span className="label !text-[10px] text-faint">{description.length.toLocaleString()}/{LIMITS.description.max.toLocaleString()}</span>
               <button
                 onClick={build}
-                disabled={loading || description.trim().length < 10}
+                disabled={loading || description.trim().length < LIMITS.description.min}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-ink-2 disabled:opacity-30"
               >
                 {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
@@ -313,8 +336,15 @@ export default function BriefPage() {
                         aria-label="Campaign name"
                         className="display -ml-1 w-full rounded-[8px] bg-transparent px-1 text-[clamp(1.8rem,3.4vw,2.4rem)] leading-tight outline-none transition hover:bg-ink/5 focus:bg-ink/5"
                         value={brief.campaignName}
+                        maxLength={LIMITS.name}
+                        aria-invalid={!!errors.campaignName || undefined}
                         onChange={(e) => set("campaignName", e.target.value)}
                       />
+                      {errors.campaignName && (
+                        <p role="alert" className="mt-1 text-[12px] font-semibold text-ink">
+                          ⚠ {errors.campaignName}
+                        </p>
+                      )}
                       <p className="mt-1 text-[13px] text-ink/65">
                         {ready && ready.remaining.length === 0
                           ? "Everything we need. Ready to search."
@@ -346,14 +376,14 @@ export default function BriefPage() {
                 <div className="px-6 pb-2">
                   <Field label="Brand / product">
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input className={inputCls} aria-label="Brand name" placeholder="Brand name" value={brief.brandName} onChange={(e) => set("brandName", e.target.value)} />
-                      <input className={inputCls} aria-label="Product" placeholder="Product" value={brief.product} onChange={(e) => set("product", e.target.value)} />
+                      <input className={inputCls} aria-label="Brand name" placeholder="Brand name" maxLength={LIMITS.name} value={brief.brandName} onChange={(e) => set("brandName", e.target.value)} />
+                      <input className={inputCls} aria-label="Product" placeholder="Product" maxLength={LIMITS.name} value={brief.product} onChange={(e) => set("product", e.target.value)} />
                     </div>
                   </Field>
-                  <Field label="Creator niche">
+                  <Field label="Creator niche" error={errors.nicheKeywords}>
                     <Chips tone="lime" values={brief.nicheKeywords} onChange={(v) => set("nicheKeywords", v)} placeholder="add niche" />
                   </Field>
-                  <Field label="Style">
+                  <Field label="Style" error={errors.preferredStyle}>
                     <Chips tone="blue" values={brief.preferredStyle} onChange={(v) => set("preferredStyle", v)} placeholder="add style" />
                   </Field>
                   <Field label="Formats">
@@ -372,27 +402,27 @@ export default function BriefPage() {
                       onChange={(v) => set("platforms", v)}
                     />
                   </Field>
-                  <Field label="Budget & timing">
+                  <Field label="Budget & timing" error={[errors.budgetUsd, errors.deliverableCount, errors.timelineDays].filter(Boolean).join(" ") || undefined}>
                     <div className="grid grid-cols-3 gap-2">
-                      <NumberInput label="Budget" value={brief.budgetUsd} onChange={(v) => set("budgetUsd", v)} prefix="$" placeholder="—" />
-                      <NumberInput label="Videos" value={brief.deliverableCount} onChange={(v) => set("deliverableCount", v)} placeholder="—" />
-                      <NumberInput label="Deadline" value={brief.timelineDays} onChange={(v) => set("timelineDays", v)} suffix="days" placeholder="—" />
+                      <NumberInput label="Budget" invalid={!!errors.budgetUsd} value={brief.budgetUsd} onChange={(v) => set("budgetUsd", v)} prefix="$" placeholder="—" />
+                      <NumberInput label="Videos" invalid={!!errors.deliverableCount} value={brief.deliverableCount} onChange={(v) => set("deliverableCount", v)} placeholder="—" />
+                      <NumberInput label="Deadline" invalid={!!errors.timelineDays} value={brief.timelineDays} onChange={(v) => set("timelineDays", v)} suffix="days" placeholder="—" />
                     </div>
                   </Field>
-                  <Field label="Must include">
+                  <Field label="Must include" error={errors.requiredContent}>
                     <Chips tone="tile" values={brief.requiredContent} onChange={(v) => set("requiredContent", v)} placeholder="add item" />
                   </Field>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-5">
-                  <p className={`text-[13px] ${brief.nicheKeywords.length === 0 && brief.category === "general" ? "text-orange" : "text-muted"}`}>
-                    {brief.nicheKeywords.length === 0 && brief.category === "general"
-                      ? "Add a creator niche above so we know who to search for."
+                  <p className={`text-[13px] ${hasErrors ? `font-medium ${ERROR_TEXT}` : "text-muted"}`}>
+                    {hasErrors
+                      ? `Fix ${errorCount === 1 ? "the highlighted field" : `the ${errorCount} highlighted fields`} to search.`
                       : "We\u2019ll search the live web for creators who fit this brief."}
                   </p>
                   <button
                     onClick={findMatches}
-                    disabled={brief.nicheKeywords.length === 0 && brief.category === "general"}
+                    disabled={hasErrors}
                     className="group inline-flex items-center gap-3 rounded-full bg-ink py-3 pl-5 pr-3 font-medium text-white transition hover:bg-ink-2 disabled:opacity-30"
                   >
                     Find my matches

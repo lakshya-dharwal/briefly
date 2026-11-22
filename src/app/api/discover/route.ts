@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { SearchableBriefSchema, firstProblem } from "@/lib/brief-schema";
 import type { CampaignBrief, CreatorCandidate } from "@/lib/types";
 import { buildQueries, hasYouKey, rankPagesForReading, youContents, youSearch, type YouWebResult } from "@/lib/you";
 import { extractHeuristic, mergeCreators, type ExtractedCreator, type SourcePage } from "@/lib/extract";
@@ -24,31 +25,9 @@ export type LiveStatus =
   | { kind: "failed"; reason: string }
   | { kind: "empty" }; // search worked but no creators were named on the pages
 
-const str = z.string().max(500);
-const list = z.array(str).max(30);
 const Body = z.object({
   includeSamples: z.boolean().optional(),
-  brief: z
-    .object({
-      campaignName: str,
-      brandName: z.string().max(200),
-      product: z.string().max(200),
-      category: str,
-      targetCreator: str,
-      preferredStyle: list,
-      nicheKeywords: list,
-      budgetUsd: z.number().nonnegative().optional(),
-      deliverableCount: z.number().int().nonnegative().optional(),
-      deliverableFormats: list,
-      platforms: list,
-      targetAudience: str.optional(),
-      timelineDays: z.number().int().nonnegative().optional(),
-      requiredContent: list,
-      referenceUrls: list,
-    })
-    .refine((b) => b.nicheKeywords.length > 0 || b.category.trim() !== "", {
-      message: "Add at least one creator niche to search for.",
-    }),
+  brief: SearchableBriefSchema,
 });
 
 /** Turn a You.com error into something a person can act on. */
@@ -66,11 +45,7 @@ function explain(err: unknown): string {
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return NextResponse.json(
-      { error: first?.message && !first.message.startsWith("Invalid") ? first.message : "That brief looks incomplete. Go back and rebuild it." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: firstProblem(parsed.error.issues) }, { status: 400 });
   }
   const brief = parsed.data.brief as CampaignBrief;
   const includeSamples = parsed.data.includeSamples ?? true;

@@ -123,31 +123,45 @@ Both keys are optional for a first run:
 
 | Route | Body | Returns |
 |---|---|---|
-| `POST /api/brief` | `{ description, brandName?, product? }` | `{ brief, readiness: { percent, remaining[] }, mode: "ai" \| "sample" }` |
-| `POST /api/discover` | `{ brief, includeSamples? }` | `{ steps[], results: [{ creator, match, signals }] }` |
+| `POST /api/brief` | `{ description, brandName?, product? }` | `{ brief, readiness: { percent, remaining[], items[] }, mode: "ai" \| "rules" }` |
+| `POST /api/discover` | `{ brief, includeSamples? }` | `{ steps[], results: [{ creator, match, signals }], liveStatus }` |
+
+`liveStatus` is one of `ok`, `off` (no `YOU_API_KEY`), `failed` (with a plain-English `reason`, e.g. bad key or out of credits) or `empty` (the web had no creators related to the niche).
+
+Both routes validate input with the shared rules in [`src/lib/brief-schema.ts`](src/lib/brief-schema.ts) and return `400 { error }` with a human-readable message when something is wrong (e.g. *"Add at least one creator niche to search for."*). Limits: description 10–4,000 characters, budget $1–$10M, 1–50 videos, 1–365 days, up to 15 tags per list.
 
 ## Project structure
 
 ```
 src/
 ├── app/
-│   ├── page.tsx              # Landing (hero + swipe→match→track animation)
-│   ├── brief/                # Describe → editable brief + readiness meter
-│   ├── discover/             # Live discovery steps → swipe deck → shortlist
+│   ├── page.tsx                # Landing: hero with live swipe card, how it works, principles
+│   ├── brief/                  # Describe → editable brief, readiness meter, inline field errors
+│   ├── discover/               # Live discovery steps → swipe deck → detail panel → shortlist
 │   └── api/
-│       ├── brief/route.ts    # Claude → structured CampaignBrief
-│       └── discover/route.ts # You.com search → normalize → rank
+│       ├── brief/route.ts      # Claude (or rules) → validated CampaignBrief
+│       └── discover/route.ts   # You.com Search → Contents → extract creators → rank
 ├── components/
-│   └── hero-deck.tsx
+│   ├── creator-card.tsx        # Colourful match card (why it fits, quote, signal chips)
+│   ├── creator-detail.tsx      # Side panel: full breakdown, every quote and source
+│   ├── shortlist-panel.tsx     # Shortlist mini cards
+│   ├── match-card.tsx          # Landing hero swipe loop (sample profiles)
+│   ├── hero-stage.tsx          # Landing hero card fan + floating chips
+│   └── app-header.tsx          # Logo + Brief → Match → Deliver steps
 ├── lib/
-│   ├── types.ts              # CreatorCandidate, CampaignBrief, Agreement…
-│   ├── matching.ts           # Compatibility engine (+ matching.test.ts)
-│   ├── you.ts                # You.com Search + Contents clients, query builder
-│   ├── extract.ts            # Page → creators (pattern fallback, merge, guards)
-│   ├── extract-ai.ts         # Page → creators with Claude, quotes verified
-│   ├── brief.ts              # AI brief builder
-│   └── readiness.ts          # "Campaign Ready: 85%" meter
-└── data/                     # Fictional sample brief + creators (labeled)
+│   ├── types.ts                # CreatorCandidate, CampaignBrief, Agreement…
+│   ├── brief-schema.ts         # Shared validation rules + limits for briefs
+│   ├── brief.ts                # Claude brief builder
+│   ├── brief-rules.ts          # Rule-based brief builder (no API key needed)
+│   ├── brief-store.ts          # Hands the brief from /brief to /discover (validated)
+│   ├── readiness.ts            # "Campaign ready" checklist
+│   ├── you.ts                  # You.com Search + Contents clients, query builder
+│   ├── extract.ts              # Page → creators (pattern fallback, cleanup, merge)
+│   ├── extract-ai.ts           # Page → creators with Claude, quotes verified
+│   ├── links.ts                # Profile links + "jump to mention" source links
+│   ├── matching.ts             # Compatibility engine
+│   └── display.ts              # Small display helpers
+└── data/                       # Fictional sample brief + creators (labeled)
 ```
 
 ## Roadmap
@@ -161,6 +175,8 @@ src/
 - [x] Brief builder UI with editable fields and the readiness meter (Claude, or rule-based parsing without a key)
 - [x] Discovery sequence driven by real `steps`
 - [x] Swipe deck (drag, buttons, arrow keys, undo) and shortlist tray
+- [x] Creator detail side panel (full breakdown, every quote and source)
+- [x] Error and empty states, shared input validation
 - [ ] Compare view for the shortlist
 - [ ] Invite flow and *It's a Match* screen (simulated acceptance, labeled)
 - [ ] AI collaboration agreement generator

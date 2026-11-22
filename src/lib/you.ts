@@ -3,7 +3,7 @@
 // POST https://ydc-index.io/v1/search, header X-API-Key, JSON body.
 
 import "server-only";
-import type { CampaignBrief, CreatorCandidate } from "./types";
+import type { CampaignBrief } from "./types";
 
 const ENDPOINT = "https://ydc-index.io/v1/search";
 
@@ -102,71 +102,4 @@ export function rankPagesForReading(hits: YouWebResult[]): YouWebResult[] {
   const score = (h: YouWebResult) =>
     (CREATOR_WORDS.test(h.title) ? 2 : 0) + (LIST_TITLE.test(h.title) ? 1 : 0);
   return [...hits].sort((a, b) => score(b) - score(a));
-}
-
-const PLATFORM_HOSTS: Record<string, string> = {
-  "tiktok.com": "tiktok",
-  "instagram.com": "instagram",
-  "youtube.com": "youtube",
-  "youtu.be": "youtube",
-  "x.com": "x",
-  "twitter.com": "x",
-};
-
-function platformOf(url: string): string | undefined {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    return Object.entries(PLATFORM_HOSTS).find(([h]) => host.endsWith(h))?.[1];
-  } catch {
-    return undefined;
-  }
-}
-
-function handleOf(url: string): string | undefined {
-  const m = url.match(/(?:tiktok\.com|instagram\.com|youtube\.com)\/(@?[A-Za-z0-9._-]+)/);
-  if (!m) return undefined;
-  const h = m[1];
-  if (["p", "reel", "watch", "video", "explore", "shorts"].includes(h)) return undefined;
-  return h.startsWith("@") ? h : `@${h}`;
-}
-
-/**
- * Normalize raw search hits into candidates. Everything here is UNVERIFIED:
- * we only know what the page title/snippets say. Rates, availability and
- * follower counts are left unknown on purpose.
- */
-export function normalizeResults(results: YouWebResult[]): CreatorCandidate[] {
-  const byUrl = new Map<string, CreatorCandidate>();
-  for (const r of results) {
-    if (!r.url || byUrl.has(r.url)) continue;
-    const evidence = [
-      ...(r.contents?.highlights ?? []),
-      ...(r.snippets ?? []),
-      ...(r.description ? [r.description] : []),
-    ].slice(0, 4);
-    byUrl.set(r.url, {
-      id: `you-${hash(r.url)}`,
-      name: r.title,
-      handle: handleOf(r.url),
-      platform: platformOf(r.url),
-      profileUrl: r.url,
-      portfolioUrls: [r.url],
-      nicheTags: [],
-      contentStyleTags: [],
-      bio: r.description,
-      evidenceSnippets: evidence,
-      sourceUrls: [r.url],
-      budgetFit: "unknown",
-      availability: "unknown",
-      verificationStatus: "unverified",
-      origin: "live-search",
-    });
-  }
-  return [...byUrl.values()];
-}
-
-function hash(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
 }

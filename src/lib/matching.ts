@@ -115,36 +115,13 @@ export function deriveSignals(
   return { niche, style, portfolio, format, budget, availability };
 }
 
-/** Plain-language reasons, each tied to a signal we actually have. */
-export function explain(signals: MatchSignals, result: MatchResult): string[] {
-  const out: string[] = [];
-  const say = (v: number | null, strong: string, some: string) => {
-    if (v === null) return;
-    if (v >= 0.6) out.push(strong);
-    else if (v > 0) out.push(some);
-  };
-  say(signals.niche, "Strong niche overlap with the brief.", "Some niche overlap.");
-  say(signals.style, "Public content matches the requested tone.", "Partial style match.");
-  say(signals.portfolio, "Multiple portfolio examples found.", "Limited portfolio evidence.");
-  say(signals.format, "Existing work resembles the requested format.", "Some format overlap.");
-  if (signals.budget === 1) out.push("Listed rate fits the budget.");
-  if (result.unknown.includes("budget") || result.unknown.includes("availability")) {
-    out.push("Pricing and availability need confirmation.");
-  }
-  return out;
-}
-
 export function rankCandidates(brief: CampaignBrief, candidates: CreatorCandidate[]) {
   return candidates
     .map((c) => {
       const signals = deriveSignals(brief, c);
       const match = scoreMatch(signals);
       return {
-        creator: {
-          ...c,
-          matchScore: match.score,
-          matchExplanation: explain(signals, match).join(" "),
-        },
+        creator: { ...c, matchScore: match.score },
         match,
         signals,
       };

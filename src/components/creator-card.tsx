@@ -16,7 +16,8 @@ const DIM_LABEL: Record<MatchDimension, string> = {
   availability: "Avail.",
 };
 
-export const PLATFORM_NAME: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
+export { PLATFORM_NAME } from "@/lib/links";
+import { PLATFORM_NAME } from "@/lib/links";
 
 const FORMAT_WORD: Record<string, string> = {
   "product-demo": "product demos",
