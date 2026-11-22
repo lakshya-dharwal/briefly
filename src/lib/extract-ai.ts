@@ -8,6 +8,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { MODEL } from "./brief";
 import { cleanMarkdown, quoteInPage, type ExtractedCreator, type SourcePage } from "./extract";
+import { platformFromPage } from "./links";
 import type { CampaignBrief } from "./types";
 
 const Schema = z.object({
@@ -72,7 +73,7 @@ ${text}
     .map((c) => ({
       name: c.name,
       handle: c.handle ? `@${c.handle.replace(/^@/, "")}` : undefined,
-      platform: c.platform && c.platform !== "other" ? c.platform : undefined,
+      platform: c.platform && c.platform !== "other" ? c.platform : platformFromPage(page.url, page.title),
       profileUrl: c.profileUrl && page.markdown.includes(c.profileUrl) ? c.profileUrl : undefined,
       nicheTags: c.nicheTags.map((t) => t.toLowerCase()),
       styleTags: c.styleTags.map((t) => t.toLowerCase()),

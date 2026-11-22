@@ -152,3 +152,26 @@ describe("leftovers", () => {
     expect(ev("⋆ ˚｡⋆୨୧˚ ˚୨୧⋆｡˚ ⋆ makeup tips skincare recs")).toBe("makeup tips skincare recs");
   });
 });
+
+describe("platform from the source page", () => {
+  it("uses the page's platform when the bio doesn't say", () => {
+    const [c] = extractHeuristic({
+      url: "https://insense.pro/blog/tiktok-skincare-influencers",
+      markdown: "### 1. @cherryblossom216\n\nCherry shares cozy skincare routines and product swaps.",
+    });
+    expect(c.platform).toBe("tiktok");
+    expect(c.handle).toBe("@cherryblossom216");
+  });
+});
+
+describe("handles from headings", () => {
+  const first = (heading: string, body = "Twins making skincare and beauty videos together.") =>
+    extractHeuristic({ url: "https://insense.pro/blog/tiktok-skincare-influencers", markdown: `### 1. ${heading}\n\n${body}` })[0];
+  it("keeps a heading that is exactly a handle", () => {
+    expect(first("@cherryblossom216").handle).toBe("@cherryblossom216");
+  });
+  it("doesn't invent a handle from a title with spaces", () => {
+    expect(first("@aleksic twins").handle).toBeUndefined();
+    expect(first("@aleksic twins", "Twins doing skincare. Follow @aleksictwins for more.").handle).toBe("@aleksictwins");
+  });
+});

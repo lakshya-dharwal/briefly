@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Check, Heart, HelpCircle, Minus, Send, X } from "lucide-react";
 import { handleRepeatsName } from "@/lib/display";
+import { profileLink, sourceLink } from "@/lib/links";
 import { PLATFORM_NAME, domainOf, initials, reasons, toneFor, type Ranked } from "@/components/creator-card";
 import type { CampaignBrief } from "@/lib/types";
 
@@ -28,7 +29,13 @@ function MiniCard({
   const c = r.creator;
   const tone = toneFor(c.id);
   const top = reasons(r.signals, c, brief)[0];
-  const link = c.portfolioUrls.find((u) => u.startsWith("http")) ?? c.sourceUrls[0];
+  const profile = profileLink(c);
+  const link = profile?.url ?? (c.sourceUrls[0] ? sourceLink(c.sourceUrls[0], c) : null);
+  const linkLabel = profile
+    ? `${profile.label} (${c.name})`
+    : c.sourceUrls[0]
+      ? `Where we found ${c.name} (${domainOf(c.sourceUrls[0])})`
+      : "";
   const strong = r.match.showPreciseScore && r.match.score >= 60;
 
   return (
@@ -94,7 +101,8 @@ function MiniCard({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              aria-label={`Open ${c.name}'s source`}
+              aria-label={linkLabel}
+              title={linkLabel}
               className="grid h-8 w-8 place-items-center rounded-full text-blue hover:bg-tile"
             >
               <ArrowUpRight size={15} />

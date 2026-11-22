@@ -2,6 +2,7 @@
 
 import { ArrowUpRight, Check, HelpCircle, Minus, Quote } from "lucide-react";
 import { handleRepeatsName } from "@/lib/display";
+import { profileLink, sourceLink } from "@/lib/links";
 import type { CampaignBrief, CreatorCandidate, MatchDimension, MatchResult, MatchSignals } from "@/lib/types";
 
 export type Ranked = { creator: CreatorCandidate; match: MatchResult; signals: MatchSignals };
@@ -138,6 +139,7 @@ export function CreatorCard({
   const whys = reasons(signals, c, brief);
   const platform = c.platform ? PLATFORM_NAME[c.platform] ?? c.platform : null;
   const primarySource = c.sourceUrls[0] ? domainOf(c.sourceUrls[0]) : null;
+  const profile = profileLink(c);
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[24px] border border-line-strong bg-surface shadow-[0_1px_0_rgba(0,0,0,0.04),0_28px_56px_-28px_rgba(17,17,19,0.35)]">
@@ -221,15 +223,16 @@ export function CreatorCard({
       <div className="mt-4 border-t border-line px-5 py-3.5">
         <SignalChips signals={signals} />
         <div className="mt-3 flex items-center justify-between">
-          {c.sourceUrls.length ? (
+          {profile || c.sourceUrls.length ? (
             <a
-              href={c.profileUrl.startsWith("http") ? c.profileUrl : c.sourceUrls[0]}
+              href={profile ? profile.url : sourceLink(c.sourceUrls[0], c)}
               target="_blank"
               rel="noreferrer"
               onPointerDown={(e) => e.stopPropagation()}
+              title={profile ? `Open ${c.name}'s ${platform} profile` : `Opens ${domainOf(c.sourceUrls[0])} at the part about ${c.name}`}
               className="inline-flex items-center gap-1 text-[13px] font-medium text-blue hover:underline"
             >
-              {c.portfolioUrls.length && platform ? `View on ${platform}` : "View source"} <ArrowUpRight size={13} />
+              {profile ? profile.label : `Where we found them`} <ArrowUpRight size={13} />
             </a>
           ) : (
             <span className="text-[12px] text-faint">Fictional demo profile</span>

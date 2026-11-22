@@ -7,6 +7,7 @@
 // - A profile URL is kept only if it literally appears in the page.
 // - Every creator keeps a link back to the page it came from.
 
+import { platformFromPage } from "./links";
 import type { CreatorCandidate } from "./types";
 
 export type SourcePage = { url: string; title?: string; markdown: string };
@@ -201,12 +202,13 @@ export function extractHeuristic(page: SourcePage): ExtractedCreator[] {
     const name = displayName(cleanName(stripMd(block.heading)));
     if (BRAND_COPY.test(block.body)) continue;
     if (name.length < 2 || name.length > 60) continue;
-    const handle = name.startsWith("@") ? name.split(/\s/)[0] : firstHandle(block.body);
+    // "@cherryblossom216" is a handle; "@aleksic twins" is a title, not a handle — don't guess one from it.
+    const handle = /^@[\w.]+$/.test(name) ? name : firstHandle(block.body);
     const evidence = clip(tidy(stripMd(block.body.split(NEXT_HEAD)[0])));
     push({
       name,
       handle,
-      platform: platformMentioned(block.body),
+      platform: platformMentioned(block.body) ?? platformFromPage(page.url, page.title),
       profileUrl: block.body.match(PROFILE_RE_ONE)?.[1],
       nicheTags: [],
       styleTags: [],

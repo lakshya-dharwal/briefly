@@ -8,6 +8,7 @@ import { ArrowUpRight, Check, Globe, Heart, HelpCircle, Info, Minus, Quote, Tras
 import { useEffect, useRef } from "react";
 import { PLATFORM_NAME, domainOf, initials, reasons, tidyQuote, toneFor, type Ranked } from "@/components/creator-card";
 import { handleRepeatsName } from "@/lib/display";
+import { profileLink, sourceLink } from "@/lib/links";
 import { WEIGHTS } from "@/lib/matching";
 import type { CampaignBrief, MatchDimension } from "@/lib/types";
 
@@ -104,7 +105,7 @@ function Body({
   const handle = c.handle && !handleRepeatsName(c.name, c.handle) ? c.handle : null;
   const whys = reasons(signals, c, brief);
   const quotes = c.evidenceSnippets.map(tidyQuote).filter((q) => q.length > 3);
-  const profile = c.portfolioUrls.find((u) => u.startsWith("http"));
+  const profile = profileLink(c);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -224,22 +225,27 @@ function Body({
       {/* Sources */}
       <section className="px-6 py-5">
         <p className="label text-muted">Sources</p>
-        {c.sourceUrls.length ? (
+        {c.sourceUrls.length || profile ? (
           <ul className="mt-3 space-y-2">
             {profile && (
               <li>
-                <a href={profile} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-[12px] border border-line px-4 py-3 text-[14px] font-medium hover:border-ink">
-                  <span>{platform ? `Profile on ${platform}` : "Profile"}</span>
-                  <ArrowUpRight size={15} className="text-blue" />
+                <a href={profile.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-[12px] bg-ink px-4 py-3 text-[14px] font-medium text-white hover:bg-ink-2">
+                  <span className="min-w-0">
+                    <span className="block">{profile.label}</span>
+                    <span className="block text-[12px] font-normal text-white/55">
+                      {profile.kind === "found" ? "Linked from the source page" : `Built from their handle ${c.handle}. Not checked yet.`}
+                    </span>
+                  </span>
+                  <ArrowUpRight size={15} className="shrink-0 text-lime" />
                 </a>
               </li>
             )}
             {c.sourceUrls.map((u) => (
               <li key={u}>
-                <a href={u} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-[12px] border border-line px-4 py-3 text-[14px] hover:border-ink">
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium">{domainOf(u)}</span>
-                    <span className="text-faint"> · where we found them</span>
+                <a href={sourceLink(u, c)} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-[12px] border border-line px-4 py-3 text-[14px] hover:border-ink">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{domainOf(u)}</span>
+                    <span className="block text-[12px] text-faint">Where we found them · jumps to their mention</span>
                   </span>
                   <ArrowUpRight size={15} className="shrink-0 text-blue" />
                 </a>
