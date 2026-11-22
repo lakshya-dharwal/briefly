@@ -182,12 +182,19 @@ export default function BriefPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description, brandName: brandName || undefined }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.brief) {
+        setError(
+          res.status === 400
+            ? data?.error ?? "Add a little more detail about the campaign."
+            : "The brief builder hit a problem on our side. Try again in a moment.",
+        );
+        return;
+      }
       setBrief(data.brief);
       setMode(data.mode);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } catch {
+      setError("We couldn’t reach Briefly. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -238,7 +245,20 @@ export default function BriefPage() {
               </button>
             </div>
           </div>
-          {error && <p className="mt-3 text-sm text-orange">{error}</p>}
+          {error ? (
+            <div role="alert" className="mt-3 flex items-start gap-3 rounded-[14px] border border-orange/40 bg-orange/5 px-4 py-3 text-[14px]">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-orange text-[12px] font-bold text-white">!</span>
+              <p className="flex-1 text-ink">{error}</p>
+              <button onClick={build} disabled={loading} className="shrink-0 text-[13px] font-medium underline underline-offset-4">
+                Retry
+              </button>
+            </div>
+          ) : (
+            description.trim().length > 0 &&
+            description.trim().length < 10 && (
+              <p className="mt-3 text-[13px] text-muted">Keep going. Write at least a short sentence about the campaign.</p>
+            )
+          )}
 
           <p className="label mt-8 text-faint">Try one</p>
           <div className="mt-3 space-y-2">
@@ -365,7 +385,11 @@ export default function BriefPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-5">
-                  <p className="text-[13px] text-muted">We&apos;ll search the live web for creators who fit this brief.</p>
+                  <p className={`text-[13px] ${brief.nicheKeywords.length === 0 && brief.category === "general" ? "text-orange" : "text-muted"}`}>
+                    {brief.nicheKeywords.length === 0 && brief.category === "general"
+                      ? "Add a creator niche above so we know who to search for."
+                      : "We\u2019ll search the live web for creators who fit this brief."}
+                  </p>
                   <button
                     onClick={findMatches}
                     disabled={brief.nicheKeywords.length === 0 && brief.category === "general"}

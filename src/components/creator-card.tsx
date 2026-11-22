@@ -15,7 +15,7 @@ const DIM_LABEL: Record<MatchDimension, string> = {
   availability: "Avail.",
 };
 
-const PLATFORM_NAME: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
+export const PLATFORM_NAME: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X" };
 
 const FORMAT_WORD: Record<string, string> = {
   "product-demo": "product demos",
@@ -54,7 +54,7 @@ export function initials(name: string) {
 }
 
 /** Turn the match signals into short, plain-English reasons. */
-function reasons(signals: MatchSignals, c: CreatorCandidate, brief?: CampaignBrief) {
+export function reasons(signals: MatchSignals, c: CreatorCandidate, brief?: CampaignBrief) {
   const out: { kind: "yes" | "partial" | "unknown"; text: string }[] = [];
   const niche = brief?.nicheKeywords[0] ?? brief?.category;
   const styles = brief?.preferredStyle.slice(0, 2).join(" & ");
@@ -80,7 +80,7 @@ function reasons(signals: MatchSignals, c: CreatorCandidate, brief?: CampaignBri
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Clean a source snippet into one readable quote. */
-function tidyQuote(s: string) {
+export function tidyQuote(s: string) {
   const t = s
     // drop "words" built from decorative sparkle characters, e.g. "·˚₊‧୨୧‧₊˚·"
     .split(/\s+/)
@@ -122,11 +122,14 @@ export function CreatorCard({
   index,
   total,
   brief,
+  hint = false,
 }: {
   r: Ranked;
   index: number;
   total: number;
   brief?: CampaignBrief;
+  /** Show "Tap for details" (only on the live, interactive top card). */
+  hint?: boolean;
 }) {
   const { creator: c, match: m, signals } = r;
   const isSample = c.origin === "sample";
@@ -231,7 +234,11 @@ export function CreatorCard({
           ) : (
             <span className="text-[12px] text-faint">Fictional demo profile</span>
           )}
-          {c.sourceUrls.length > 1 && <span className="text-[12px] text-faint">{c.sourceUrls.length} sources</span>}
+          {hint ? (
+            <span className="label !text-[9px] text-faint">Tap for details</span>
+          ) : (
+            c.sourceUrls.length > 1 && <span className="text-[12px] text-faint">{c.sourceUrls.length} sources</span>
+          )}
         </div>
       </div>
     </article>
